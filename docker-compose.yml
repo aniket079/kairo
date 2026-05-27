@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: kairo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kairo_user
+      POSTGRES_PASSWORD: kairo_password
+      POSTGRES_DB: kairo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - kairo_postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairo_user -d kairo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: kairo-redis
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - kairo_redis_data:/data
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: kairo-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@kairo.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis-commander:
+    image: rediscommander/redis-commander
+    container_name: kairo-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:kairo-redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  kairo_postgres_data:
+  kairo_redis_data:
