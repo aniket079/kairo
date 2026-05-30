@@ -7,10 +7,16 @@ const HealthResponseSchema = z.object({
   version: z.string(),
 });
 
+const ReadinessResponseSchema = z.object({
+  ready: z.boolean(),
+});
+
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+export type ReadinessResponse = z.infer<typeof ReadinessResponseSchema>;
+
+const SERVICE_VERSION = '1.0.0';
 
 export async function registerHealthRoutes(app: FastifyInstance) {
-  // Health check endpoint
   app.get<{ Reply: HealthResponse }>(
     '/health',
     {
@@ -23,21 +29,19 @@ export async function registerHealthRoutes(app: FastifyInstance) {
               timestamp: { type: 'string' },
               version: { type: 'string' },
             },
+            required: ['status', 'timestamp', 'version'],
           },
         },
       },
     },
-    async (_request, _reply) => {
-      return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-      };
-    }
+    async () => ({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: SERVICE_VERSION,
+    })
   );
 
-  // Ready endpoint
-  app.get<{ Reply: { ready: boolean } }>(
+  app.get<{ Reply: ReadinessResponse }>(
     '/ready',
     {
       schema: {
@@ -47,14 +51,13 @@ export async function registerHealthRoutes(app: FastifyInstance) {
             properties: {
               ready: { type: 'boolean' },
             },
+            required: ['ready'],
           },
         },
       },
     },
-    async (_request, _reply) => {
-      return {
-        ready: true,
-      };
-    }
+    async () => ({
+      ready: true,
+    })
   );
 }
